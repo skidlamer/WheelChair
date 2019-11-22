@@ -15,10 +15,11 @@ try {
 			// must be synchronous to force execution before other scripts
 			// note: we fetch the same code for each iframe
 			const request = async () => {
-				const url = 'https://raw.githubusercontent.com/SkidLamer/WheelChair/master/wheelchair.min.js';
-				const response = await fetch(url);
+				const url = 'https://raw.githubusercontent.com/hrt/WheelChair/master/wheelchair.min.js';
+				const url2 = chrome.runtime.getURL('wheelchair.js'); //Change to this for development
+				const response = await fetch(url2);
 				const unique_string = chrome.runtime.getURL('').match(/\/\/(\w{9})\w+\//)[1];
-				let text = await response.text();
+				const text = await response.text();
 				code = text.toString().replace(/ttap#4547/g, unique_string);
 				// inject our code into a new iframe to avoid using hooks placed by anti cheat
 				let frame = document.createElement('iframe');
