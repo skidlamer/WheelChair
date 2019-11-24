@@ -127,26 +127,32 @@ function cripple_window(_window) {
             const chestWidth = 2.6;
             const armInset = -.1;
             const playerScale = (2 * armScale + chestWidth + armInset) / 2;
-            const SHOOT = 5, SCOPE = 6, xDr = 3, yDr = 2, JUMP = 7, CROUCH = 8;
+            const INPUTS = { SPEED: 1, YDIR: 2, XDIR: 3, SHOOT: 5, SCOPE: 6, JUMP: 7, CROUCH: 8, RELOAD: 9, WEAPON: 10, };
             const PI2 = Math.PI * 2;
+            /******************************************************/
             let defined = (object) => typeof object !== "undefined";
-            let isEnemy = function(player) {return !me.team || player.team != me.team};
-            let canHit = function(player) {return null == world[canSee](me, player.x3, player.y3 - player.crouchVal * crouchDst, player.z3)};
-            let normaliseYaw = function(yaw) {return (yaw % PI2 + PI2) % PI2;};
-            let getDir = function(a, b, c, d) {
-                return Math.atan2(b - d, a - c);
-            };
-            let getD3D = function(a, b, c, d, e, f) {
-                let g = a - d, h = b - e, i = c - f;
-                return Math.sqrt(g * g + h * h + i * i);
-            };
-            let getXDire = function(a, b, c, d, e, f) {
-                let g = Math.abs(b - e), h = getD3D(a, b, c, d, e, f);
-                return Math.asin(g / h) * (b > e ? -1 : 1);
-            };
-
+            let isEnemy = (player) => !me.team || player.team != me.team;
+            let canHit = (player) =>  null == world[canSee](me, player.x3, player.y3 - player.crouchVal * crouchDst, player.z3);
+            let normaliseYaw = (yaw) => (yaw % PI2 + PI2) % PI2;;
+            let getDistance3D = (fromX, fromY, fromZ, toX, toY, toZ) => {
+                var distX = fromX - toX, distY = fromY - toY, distZ = fromZ - toZ;
+                return Math.sqrt(distX * distX + distY * distY + distZ * distZ);
+            }
+            let getDistance = (pos1, pos2) => {
+                return getDistance3D(pos1.x, pos1.y, pos1.z, pos2.x, pos2.y, pos2.z);
+            } 
+            let getDirection = (fromZ, fromX, toZ, toX) => {
+                return Math.atan2(fromX - toX, fromZ - toZ);
+            }   
+            let getXDire = (fromX, fromY, fromZ, toX, toY, toZ) => {
+                var dirY = Math.abs(fromY - toY), dist = getDistance3D(fromX, fromY, fromZ, toX, toY, toZ);
+                return Math.asin(dirY / dist) * (fromY > toY ? -1 : 1);
+            }   
+            let getAngleDist = (start, end) =>  {
+                return Math.atan2(Math.sin(end - start), Math.cos(start - end));
+            }
             let dAngleTo = function(x, y, z) {
-                let ty = normaliseYaw(getDir(controls.object.position.z, controls.object.position.x, z, x));
+                let ty = normaliseYaw(getDirection(controls.object.position.z, controls.object.position.x, z, x));
                 let tx = getXDire(controls.object.position.x, controls.object.position.y, controls.object.position.z, x, y, z);
                 let oy = normaliseYaw(controls.object.rotation.y);
                 let ox = controls[pchObjc].rotation.x;
@@ -155,9 +161,10 @@ function cripple_window(_window) {
                 return Math.hypot(dYaw, dPitch);
             };
             let calcAngleTo = function(player) {return dAngleTo(player.x3, player.y3 + playerHeight - (headScale + hitBoxPad) / 2 - player.crouchVal * crouchDst, player.z3);};
-            let calcDistanceTo = function(player) {return getD3D(player.x3, player.y3, player.z3, me.x, me.y, me.z)};
+            let calcDistanceTo = function(player) {return getDistance3D(player.x3, player.y3, player.z3, me.x, me.y, me.z)};
             let isCloseEnough = function(player) {let distance = calcDistanceTo(player); return me.weapon.range >= distance && ("Shotgun" != me.weapon.name || distance < 70) && ("Akimbo Uzi" != me.weapon.name || distance < 100);};
             let haveAmmo = function() {return !(me.ammos[me.weaponIndex] !== undefined && me.ammos[me.weaponIndex] == 0);};
+            /******************************************************/
 
             // target selector - based on closest to aim
             let closest = null, closestAngle = Infinity;
@@ -189,38 +196,38 @@ function cripple_window(_window) {
                 let target = closest;
                 let y = target.y3 + playerHeight - (headScale/* + hitBoxPad*/) / 2 - target.crouchVal * crouchDst;
                 if (me.weapon.nAuto && me.didShoot) {
-                    inputs[SHOOT] = 0;
+                    inputs[INPUTS.SHOOT] = 0;
                 } else if (!me.aimVal) {
-                    inputs[SHOOT] = 1;
-                    inputs[SCOPE] = 1;
+                    inputs[INPUTS.SHOOT] = 1;
+                    inputs[INPUTS.SCOPE] = 1;
                 } else {
-                    inputs[SCOPE] = 1;
+                    inputs[INPUTS.SCOPE] = 1;
                 }
 
-                ty = getDir(controls.object.position.z, controls.object.position.x, target.z3, target.x3);
+                ty = getDirection(controls.object.position.z, controls.object.position.x, target.z3, target.x3);
                 tx = getXDire(controls.object.position.x, controls.object.position.y, controls.object.position.z, target.x3, y, target.z3);
 
                 // perfect recoil control
                 tx -= recoilMlt * me[recoilAnimY];
             } else {
-                inputs[SHOOT] = controls[mouseDownL];
-                inputs[SCOPE] = controls[mouseDownR];
+                inputs[INPUTS.SHOOT] = controls[mouseDownL];
+                inputs[INPUTS.SCOPE] = controls[mouseDownR];
             }
 
 
             // silent aim
-            inputs[xDr] = +(tx % PI2).toFixed(3);
-            inputs[yDr] = +(ty % PI2).toFixed(3);
+            inputs[INPUTS.XDIR] = +(tx % PI2).toFixed(3);
+            inputs[INPUTS.YDIR] = +(ty % PI2).toFixed(3);
 
             // auto reload
             controls.keys[controls.reloadKey] = !haveAmmo() * 1;
 
             // bhop
-            inputs[JUMP] = (controls.keys[controls.jumpKey] && !me.didJump) * 1;
+            inputs[INPUTS.JUMP] = (controls.keys[controls.jumpKey] && !me.didJump) * 1;
 
             me.lastInput = inputs;
 
-            // runs once
+            // runs once /******************************************************/ 
             if (!shared_state.get('init')) {
                 shared_state.set('init', true);
 
@@ -401,7 +408,7 @@ function cripple_window(_window) {
             };
         })
     }
-
+    /******************************************************/ 
     const handler = {
       construct(target, args) {
         try {
