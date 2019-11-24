@@ -104,6 +104,8 @@ function cripple_window(_window) {
             window.three = e(0x4);
             window.colors = e(0x15);
             window.uiFunctions = e(0x85);
+            window.self = e(0x16);
+            self.console.dir(window);
             /******************************************************/
         })
     }
