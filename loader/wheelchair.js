@@ -99,7 +99,7 @@ function cripple_window(_window) {
     if (!shared_state.get('exports')) {
         shared_state.set('exports', (e) => {
             /******************************************************/
-            window.server = e(0x7);
+            window.consts = e(0x7);
             window.utils = e(0x8);
             window.three = e(0x4);
             window.colors = e(0x15);
@@ -127,6 +127,7 @@ function cripple_window(_window) {
             const playerScale = (2 * armScale + chestWidth + armInset) / 2;
             const SHOOT = 5, SCOPE = 6, xDr = 3, yDr = 2, JUMP = 7, CROUCH = 8;
             const PI2 = Math.PI * 2;
+            let defined = (object) => typeof object !== "undefined";
             let isEnemy = function(player) {return !me.team || player.team != me.team};
             let canHit = function(player) {return null == world[canSee](me, player.x3, player.y3 - player.crouchVal * crouchDst, player.z3)};
             let normaliseYaw = function(yaw) {return (yaw % PI2 + PI2) % PI2;};
@@ -221,142 +222,178 @@ function cripple_window(_window) {
             if (!shared_state.get('init')) {
                 shared_state.set('init', true);
 
-                drawVisuals = function(c) {
+                drawVisuals = function(ctx) {
                     const args = arguments.callee.caller.caller.arguments;
-                    //onRender(uiConfig, scale, world, ui, me, scale2)
-                    let scalingFactor = args[0];
-                    let perspective = args[2];
-                    let scaledWidth = c.canvas.width / scalingFactor;
-                    let scaledHeight = c.canvas.height / scalingFactor;
-                    let worldPosition = perspective.camera.getWorldPosition();
-                    for (var i = 0; i < world.players.list.length; i++) { 
-                        let e = players[i];
-                        if (e[isYou] || !e.active || !e[objInstances] || !isEnemy(e)) {
-                            continue;
-                        }
+                    const config = args.callee;
+                    const scale = args[0];
+                    //const world = args[1];
+                    const renderer = args[2];
+                    //const me = args[3];
+                    //const scale2 = args[4];
 
-                        // the below variables correspond to the 2d box esps corners
-                        // note: we can already tell what ymin ymax is
-                        let xmin = Infinity;
-                        let xmax = -Infinity;
-                        let ymin = Infinity;
-                        let ymax = -Infinity;
-                        let br = false;
-                        for (var j = -1; !br && j < 2; j+=2) {
-                            for (var k = -1; !br && k < 2; k+=2) {
-                                for (var l = 0; !br && l < 2; l++) {
-                                    let position = e[objInstances].position.clone();
-                                    position.x += j * playerScale;
-                                    position.z += k * playerScale;
-                                    position.y += l * (playerHeight - e.crouchVal * crouchDst);
-                                    if (!perspective.frustum.containsPoint(position)) {
-                                        br = true;
-                                        break;
-                                    }
-                                    position.project(perspective.camera);
-                                    xmin = Math.min(xmin, position.x);
-                                    xmax = Math.max(xmax, position.x);
-                                    ymin = Math.min(ymin, position.y);
-                                    ymax = Math.max(ymax, position.y);
-                                }
-                            }
-                        }
-
-                        if (br) {
-                            continue;
-                        }
-
-                        xmin = (xmin + 1) / 2;
-                        ymin = (ymin + 1) / 2;
-                        xmax = (xmax + 1) / 2;
-                        ymax = (ymax + 1) / 2;
-
-
-                        c.save();
-                        // save and restore these variables later so they got nothing on us
-                        const original_strokeStyle = c.strokeStyle;
-                        const original_lineWidth = c.lineWidth;
-                        const original_font = c.font;
-                        const original_fillStyle = c.fillStyle;
-
-                        // perfect box esp
-                        c.lineWidth = 5;
-                        c.strokeStyle = 'rgba(255,50,50,1)';
-
-                        let distanceScale = Math.max(.3, 1 - getD3D(worldPosition.x, worldPosition.y, worldPosition.z, e.x, e.y, e.z) / 600);
-                        c.scale(distanceScale, distanceScale);
-                        let xScale = scaledWidth / distanceScale;
-                        let yScale = scaledHeight / distanceScale;
-
-                        c.beginPath();
-                        ymin = yScale * (1 - ymin);
-                        ymax = yScale * (1 - ymax);
-                        xmin = xScale * xmin;
-                        xmax = xScale * xmax;
-                        c.moveTo(xmin, ymin);
-                        c.lineTo(xmin, ymax);
-                        c.lineTo(xmax, ymax);
-                        c.lineTo(xmax, ymin);
-                        c.lineTo(xmin, ymin);
-                        c.stroke();
-
-                        // health bar
-                        c.fillStyle = "rgba(255,50,50,1)";
-                        let barMaxHeight = ymax - ymin;
-                        c.fillRect(xmin - 7, ymin, -10, barMaxHeight);
-                        c.fillStyle = "#00FFFF";
-                        c.fillRect(xmin - 7, ymin, -10, barMaxHeight * (e.health / e.maxHealth));
-
-                        // info
-                        c.font = "60px Sans-serif";
-                        c.fillStyle = "white";
-                        c.strokeStyle='black';
-                        c.lineWidth = 1;
-                        let x = xmax + 7;
-                        let y = ymax;
-                        c.fillText(e.name, x, y);
-                        c.strokeText(e.name, x, y);
-                        c.font = "30px Sans-serif";
-                        y += 35;
-                        c.fillText(e.weapon.name, x, y);
-                        c.strokeText(e.weapon.name, x, y);
-                        y += 35;
-                        c.fillText(e.health + ' HP', x, y);
-                        c.strokeText(e.health + ' HP', x, y);
-
-                        c.strokeStyle = original_strokeStyle;
-                        c.lineWidth = original_lineWidth;
-                        c.font = original_font;
-                        c.fillStyle = original_fillStyle;
-                        c.restore();
-
-                        //Chams
-                        for (let i = 0; i < e[objInstances].children.length; i++) {
-                            const object3d = e[objInstances].children[i];
-                            for (let j = 0; j < object3d.children.length; j++) {
-                                const mesh = object3d.children[j];
-                                if (mesh && mesh.type == "Mesh") {
-                                    const material = mesh.material;
-                                    material.depthTest = canHit(e);
-                                    material.colorWrite = true;
-                                    material.toneMapped = false;
-                                    material.transparent = true;
-                                    material.opacity = 1.0;
-                                }
-                            }
+                    const fonts = {
+                        ssBig: '30px\x20Sans-serif',
+                        ssSmall: '20px\x20Sans-serif',
+                        gmBig: '30px\x20GameFont',
+                        gmSmall: '20px\x20GameFont'
+                    }
+                    
+                    if (ctx) {
+                        const canvas = ctx.canvas;
+                        let playerScaled = 0,
+                        fullWidth = canvas.parentNode.clientWidth,
+                        fullHeight = canvas.parentNode.clientHeight,
+                        scaledWidth = canvas.width / scale,
+                        scaledHeight = canvas.height / scale,
+                        camPos = renderer.camera.getWorldPosition(),
+                        entities = world.players.list.filter(x => { return x.active && !x[isYou] });
+                        
+                        //functions
+                        let world2Screen = (camera, position) => {
+                            let pos = position.clone();
+                            pos.project(camera);
+                            pos.x = (pos.x + 1) / 2;
+                            pos.y = (-pos.y + 1) / 2;
+                            pos.x *= scaledWidth;
+                            pos.y *= scaledHeight;
+                            return pos;
                         }
                     
+                        let pixelTranslate = (ctx, x, y) => {
+                            ctx.translate(~~x, ~~y);
+                        }
+                    
+                        let pixelDifference = (pos1, Pos2, multi) => {
+                            const hDiff = ~~(pos1.y - Pos2.y);
+                            return [hDiff, ~~(hDiff * multi)]
+                        }
+                    
+                        let text = (txt, font, color, x, y) => {
+                            ctx.save();
+                            pixelTranslate(ctx, x, y);
+                            ctx.fillStyle = color;
+                            ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+                            ctx.font = font;
+                            ctx.lineWidth = 1;
+                            ctx.strokeText(txt, 0, 0);
+                            ctx.fillText(txt, 0, 0);
+                            ctx.restore();
+                        }
+                    
+                        let rect = (x, y, ox, oy, w, h, color, fill) => {
+                            ctx.save();
+                            pixelTranslate(ctx, x, y);
+                            ctx.beginPath();
+                            fill ? ctx.fillStyle = color : ctx.strokeStyle = color;
+                            ctx.rect(ox, oy, w, h);
+                            fill ? ctx.fill() : ctx.stroke();
+                            ctx.closePath();
+                            ctx.restore();
+                        }
+                    
+                        let line = (x1, y1, x2, y2, lW, sS) => {
+                            ctx.save();
+                            ctx.lineWidth = lW + 2;
+                            ctx.beginPath();
+                            ctx.moveTo(x1, y1);
+                            ctx.lineTo(x2, y2);
+                            ctx.strokeStyle = "rgba(0, 0, 0, 0.25)";
+                            ctx.stroke();
+                            ctx.lineWidth = lW;
+                            ctx.strokeStyle = sS;
+                            ctx.stroke();
+                            ctx.restore();
+                        }
+                    
+                        let image = (x, y, img, ox, oy, w, h) => {
+                            ctx.save();
+                            ctx.translate(x, y);
+                            ctx.beginPath();
+                            ctx.drawImage(img, ox, oy, w, h);
+                            ctx.closePath();
+                            ctx.restore();
+                        }
+                
 
-                        // skelly chams
-                        // note: this can be done better
-                        //if (e.legMeshes[0]) {
-                        //    let material = e.legMeshes[0].material;
-                        //    material.alphaTest = 1;
-                        //    material.depthTest = false;
-                        //    material.fog = false;
-                        //    material.emissive.g = 1;
-                       //     material.wireframe = true;
-                       // }
+                        if (1) {
+                            entities.map((entity, index, array)=> {
+                                
+                                if (defined(entity[objInstances])) {
+                                    let entityPos = entity[objInstances].position;
+                                    let entitynamePos = entityPos.clone().setY(entityPos.y + (playerHeight + (0x0 <= entity.hatIndex ? nameOffsetHat : 0) + nameOffset - entity.crouchVal * crouchDst));
+                                    let teamCol = !isEnemy(entity) ? '#44AAFF' : '#FF4444';
+                                    let entityScrPosName = entitynamePos.clone();          
+                                    let playerScaled = Math.max(0.3, 1 - camPos.distanceTo(entityScrPosName) / 600);
+                                    if (1 <= 20 * playerScaled && renderer.frustum.containsPoint(entityScrPosName)) {       
+                                        ctx.save(); 
+                                        entityScrPosName.project(renderer.camera); 
+                                        entityScrPosName.x = (entityScrPosName.x + 1) / 2;
+                                        entityScrPosName.y = (entityScrPosName.y + 1) / 2; 
+                                        ctx.translate(scaledWidth * entityScrPosName.x, scaledHeight * (1 - entityScrPosName.y)); 
+                                        ctx.scale(playerScaled, playerScaled);
+                                        //healthbar
+                                        ctx.fillStyle = 'rgba(0,\x200,\x200,\x200.4)';
+                                        ctx.fillRect(-60, -16, 120, 16);
+                                        config.dynamicHP && entity.hpChase > entity.health / entity.maxHealth && (ctx.fillStyle = '#FFFFFF', ctx.fillRect(-60, -16, 120 * entity.hpChase, 16));
+                                        ctx.fillStyle = !isEnemy(entity) ? window.colors.teams[0] : window.colors.teams[1], ctx.fillRect(-60, -16, entity.health / entity.maxHealth * 120, 16);
+                                        //info
+                                        let distance = Math.round(entityPos.distanceTo(me) / 10);
+                                        if (Number.isNaN(distance)) distance = 0;
+                                        distance += "mt";
+                                        ctx.font = fonts.ssBig;
+                                        let distScale = ctx.measureText(distance).width + 10;
+                                        
+                                        let name =  entity.name, clan = entity.clan ? '[' + entity.clan + ']' : null;
+                                        ctx.font = fonts.ssBig;
+                                        let nameScale = ctx.measureText(name).width + (clan ? 0x5 : 0x0);
+
+                                        let level = entity.level;
+                                        ctx.font = fonts.ssBig;
+                                        let levelScale = level ? ctx.measureText(level).width + 0xa : 0x0;             
+                                        
+                                        let fullScale = distScale + nameScale + (clan ? ctx.measureText(clan).width : 0x0);
+                                        
+                                        ctx.translate(0, -26), 
+                                        ctx.fillStyle = teamCol, 
+                                        ctx.font = fonts.ssBig, 
+                                        ctx.fillText(distance, -fullScale / 0x2, 0x0);
+                                        ctx.fillStyle = 'white', 
+                                        ctx.font = fonts.ssBig;
+                                        ctx.globalAlpha= 0x1; 
+                                        ctx.fillText(name, -fullScale / 0x2 + distScale, 0x0), 
+                                        ctx.globalAlpha = 0x0 <= window.consts.verClans.indexOf(entity.clan) ? 0x1 : 0.4,
+                                        ctx.fillStyle = 0x0 <= window.consts.verClans.indexOf(entity.clan) ? window.colors.verified.clan : 'white', clan && ctx.fillText(clan, -fullScale / 0x2 + distScale + nameScale, 0x0);
+                                        ctx.restore();
+                                    }
+
+                                    //2d
+                                    if (renderer.frustum.containsPoint(entityPos)) {
+                                        let entityScrPosBase = world2Screen(renderer.camera, entityPos),
+                                            entityScrPosHead = world2Screen(renderer.camera, entityPos.setY(entityPos.y + playerHeight - entity.crouchVal * crouchDst)),
+                                            entityScrPxlDiff = pixelDifference(entityScrPosBase, entityScrPosHead, 0.6);
+                                        rect(entityScrPosHead.x - entityScrPxlDiff[1] / 2, entityScrPosHead.y, 0, 0, entityScrPxlDiff[1], entityScrPxlDiff[0], teamCol, false);
+                                        line(canvas.width / 2, canvas.height - 1, entityScrPosBase.x, entityScrPosBase.y, 2.5, teamCol);
+                                    }
+
+                                    //Chams
+                                    for (let i = 0; i < entity[objInstances].children.length; i++) {
+                                        const object3d = entity[objInstances].children[i];
+                                        for (let j = 0; j < object3d.children.length; j++) {
+                                            const mesh = object3d.children[j];
+                                            if (mesh && mesh.type == "Mesh") {
+                                                const material = mesh.material;
+                                                material.depthTest = false;
+                                                material.colorWrite = true;
+                                                material.transparent = true;
+                                                material.opacity = 1.0;
+                                                //material.needsUpdate = true;
+                                                //material.wireframe = !canHit(entity);
+                                            }
+                                        }
+                                    }                               
+                                }
+                            });
+                        }
                     }
                 };
             };
@@ -390,32 +427,39 @@ function cripple_window(_window) {
             window['mouseDownL'] = script.match(/this\['\w+'\]=function\(\){this\['(\w+)'\]=\w*0,this\['(\w+)'\]=\w*0,this\['\w+'\]={}/)[1];
             window['mouseDownR'] = script.match(/this\['\w+'\]=function\(\){this\['(\w+)'\]=\w*0,this\['(\w+)'\]=\w*0,this\['\w+'\]={}/)[2];
 
-            //Patches
-            script = script.replace(/'use strict';/, "");
-            script = script.replace(/(\(((\w+))=this\['map']\['manager']\['objects']\[(\w+)]\))(.+?)\)/, '$1.penetrable&&$2.active)');
-
+            //Exports
             const gm_exports = script.match(/(\['__CANCEL__']=.*?\(\w+,\w+,(\w+)\){)let/);
-            //const my_exports = gm_exports[1].concat('window.exports=',gm_exports[2],';let');
             const my_exports = gm_exports[1].concat("window.top['", master_key, "'].get('exports')(",gm_exports[2],");let");
             script = script.replace(gm_exports[0], my_exports);
             conceal_string(gm_exports[0], my_exports);
-
+            
+            //ProcInputs
             const gm_procInputs = script.match(/(this\['\w+']=function\((\w+,\w+,)\w+,\w+\){)(this)/);
             const my_procInputs =  gm_procInputs[1].concat("window.top['", master_key, "'].get('procInputs')(", gm_procInputs[2], gm_procInputs[3], ");", gm_procInputs[3]);
             script = script.replace(gm_procInputs[0], my_procInputs);
             conceal_string(gm_procInputs[0], my_procInputs);
 
             /***********************************************************************************************************/
-            /* Below are some misc features which I wouldn't consider bannable                                         */
+            //remove in game nametags
+            script = script.replace(/(if\('none'==menuHolder\['style']\['display']&&'none'==endUI\['style']\['display'])\)/, '$1 && !1)')
+            
+            //strict mode disable
+            script = script.replace(/'use strict';/, "");
+
+            //shoot through penetratable walls
+            script = script.replace(/(\(((\w+))=this\['map']\['manager']\['objects']\[(\w+)]\))(.+?)\)/, '$1.penetrable&&$2.active)');
+
             // all weapons trails on
             script = script.replace(/\w+\['weapon'\]&&\w+\['weapon'\]\['trail'\]/g, "true")
 
             // color blind mode
-            script = script.replace(/#9eeb56/g, '#00FFFF');
+            script = script.replace(/#9eeb56/g, '#44AAFF');
 
             // no zoom
             script = script.replace(/,'zoom':.+?(?=,)/g, ",'zoom':1");
+
             /***********************************************************************************************************/
+
             // bypass modification check of returned function
             const original_script = args[1];
             args[1] = script;

@@ -3,7 +3,7 @@
 
 Become a cripple, use a WheelChair...
 
-*** I reccomend you use the original wheelchair (hrt)
+*** I recommend you use the original wheelchair (hrt)
 this repo is just me playing around. - SkidLamer ***
 
 
