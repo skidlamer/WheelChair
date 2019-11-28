@@ -5,24 +5,44 @@ class Skid {
         this.three = e(0x4);
         this.colors = e(0x15);
         this.uiFunctions = e(0x85);
+        console.json = object => console.log(JSON.stringify(object, undefined, 2));
         this.menu =  {
             features:[],
             items:new Map(),
             activeMenu:0,
             activeLine:0,
+            top:280,
+            left:20,
+            lineWidth:320,
             show:true,
-        }
+        };
         this.settings = {
-            canShoot: true,
-            scopingOut: false,
-        }
+            target:null,
+            delta: 1,
+        };
+        this.enum = { 
+            speed: 1, 
+            ydir: 2, 
+            xdir: 3, 
+            shoot: 5, 
+            scope: 6, 
+            jump: 7, 
+            crouch: 8, 
+            reload: 9, 
+            weapon: 10, 
+        };
+       
         this.onload();
     }
     onload() {
+        //reAdd missing item
+        this.consts.playerHeight = 11;
+        console.json(this.consts)
+
         this.menu.items
-        .set('Krunker Skid', [this.newFeature('Self', []), this.newFeature('Weapon', []), this.newFeature('Visual', []), this.newFeature('Settings', [])])
+        .set('♿ Skid', [this.newFeature('Self', []), this.newFeature('Weapon', []), this.newFeature('Visual', []), this.newFeature('Settings', [])])
         .set('Self', [this.newFeature('AutoBhop', ['Off', 'Auto Jump', 'Key Jump', 'Auto Slide', 'Key Slide']), /*this.newFeature('SkidSettings', ['Off', 'On'])*/ ])
-        .set('Weapon', [this.newFeature('AutoAim', ['Off', 'TriggerBot', 'Quickscoper', 'Assist', 'Hip Fire', 'Silent Aim']), this.newFeature('AutoReload', ['Off', 'On']), this.newFeature('Aim Through Walls', ['Off', 'On']), this.newFeature('UseDeltaForce', ['Off', 'On'])])
+        .set('Weapon', [this.newFeature('AutoAim', ['Off', 'TriggerBot', 'Quickscoper', 'Assist', 'Aim Bot', 'Silent Aim']), this.newFeature('AutoReload', ['Off', 'On'])/*, this.newFeature('Aim Through Walls', ['Off', 'On']), this.newFeature('UseDeltaForce', ['Off', 'On'])*/])
         .set('Visual', [this.newFeature('EspMode', ['Off', '2d', 'Names', 'All']), this.newFeature('Tracers', ['Off', 'On'])])
         .set('Settings', [this.newFeature('Reset', [], this.resetSettings) /*this.newFeature('Save game.js', [], _=>{navigator.msSaveOrOpenBlob(new main.Blob([window.gamescript], {type: "text/plain;charset=utf-8"}), `game.js`);})*/])
     }
@@ -31,8 +51,7 @@ class Skid {
         let controls = world.controls;
         this.world = world;
         this.me = me;
-        const recoilMlt = 0.3;
-        controls.recoil = recoilMlt * me[recoilAnimY];
+        controls.recoil = this.consts.recoilMlt * me[recoilAnimY];
         if (!defined(controls.pitchObject)) {
             controls.aimTarget = null;
             controls.inputs = inputs;
@@ -49,22 +68,20 @@ class Skid {
                     this.xDr -= this.recoil;
                     this.inputs[3] = +(this.xDr);
                     this.inputs[2] = +(this.yDr);
-                    this.inputs[6] = 1;
                 }
                 return this.updated(...arguments);
             } 
         }
 
-        const INPUTS = { SPEED: 1, YDIR: 2, XDIR: 3, SHOOT: 5, SCOPE: 6, JUMP: 7, CROUCH: 8, RELOAD: 9, WEAPON: 10, };
         for (let i = 0, sz = this.menu.features.length; i < sz; i++) {
             const feature = this.menu.features[i];
             switch (feature.name) {
                 case 'AutoAim':
-                        this.autoAim(feature.container[feature.value]);
+                        this.autoAim(feature.container[feature.value], inputs);
                     break;
                 case 'AutoReload':
                         if (feature.value) {
-                            //inputs[INPUTS.RELOAD] = !me.ammos[me.weaponIndex];
+                            //inputs[this.enum.reload] = !me.ammos[me.weaponIndex];
                             const ammoLeft = me.ammos[me.weaponIndex];
                             if (ammoLeft === 0) {
                                 world.players.reload(me);
@@ -74,8 +91,8 @@ class Skid {
                     break;
                 case 'AutoBhop':
                         if (feature.value) {
-                            inputs[INPUTS.JUMP] = ((controls.keys[controls.jumpKey] || feature.value === 1 || feature.value === 3) && !me.didJump) * 1;
-                            if (feature.value > 2) inputs[INPUTS.CROUCH] = (me.yVel < -0.04 && me.canSlide) * 1;
+                            inputs[this.enum.jump] = ((controls.keys[controls.jumpKey] || feature.value === 1 || feature.value === 3) && !me.didJump) * 1;
+                            if (feature.value > 2) inputs[this.enum.crouch] = (me.yVel < -0.04 && me.canSlide) * 1;
                         }
                     break;
                     //case 'SkidSettings':
@@ -206,9 +223,9 @@ class Skid {
             // title values
             if (title)
             {
-                rect_col[0] = 70;
-                rect_col[1] = 90;
-                rect_col[2] = 90;
+                rect_col[0] = 103;
+                rect_col[1] = 1;
+                rect_col[2] = 205;
                 rect_col[3] = 255;
                 if (rescaleText) text_scale = 20;
                 font = 'px GameFont';
@@ -226,18 +243,15 @@ class Skid {
         }
 
         let drawMenuItem = (caption) => {
-            const top = 280;
-            const left = 20;
-            const lineWidth = 320;
             const items = this.menu.items.get(caption);
             //if (!defined(items) || items.length) return;
             if (this.menu.activeLine > items.length -1) this.menu.activeLine = 0;
 
             // draw menu
-            drawMenuLine({name:caption,valueStr:''}, lineWidth, 22, top + 18, left, left + 5, false, true);
+            drawMenuLine({name:caption,valueStr:''}, this.menu.lineWidth, 22, this.menu.top + 18, this.menu.left, this.menu.left + 5, false, true);
             for (var i = 0; i < items.length; i++) {
-                if (i != this.menu.activeLine) drawMenuLine(items[i][0], lineWidth, 19, top + 60 + i * 36, left, left + 9, false, false);
-                drawMenuLine(items[this.menu.activeLine][0], lineWidth, 19, top + 60 + this.menu.activeLine * 36, left, left + 9, true, false);
+                if (i != this.menu.activeLine) drawMenuLine(items[i][0], this.menu.lineWidth, 19, this.menu.top + 60 + i * 36, this.menu.left, this.menu.left + 9, false, false);
+                drawMenuLine(items[this.menu.activeLine][0], this.menu.lineWidth, 19, this.menu.top + 60 + this.menu.activeLine * 36, this.menu.left, this.menu.left + 9, true, false);
             }
 
             // process buttons
@@ -276,17 +290,12 @@ class Skid {
             const espValue = this.getFeature('EspMode').value;
             const espMode = this.getFeature('EspMode').container[espValue];
             if (espValue) {
-                const playerHeight = 11;
-                const nameOffset = 0.6;
-                const nameOffsetHat = 0.8;
-                const crouchDst = 3;
-                
                 entities.map((entity, index, array)=> {
                     
                     if (defined(entity[objInstances])) {
                         let isFriendly = this.get(entity, 'isFriendly');
                         let entityPos = entity[objInstances].position;
-                        let entitynamePos = entityPos.clone().setY(entityPos.y + (playerHeight + (0x0 <= entity.hatIndex ? nameOffsetHat : 0) + nameOffset - entity.crouchVal * crouchDst));
+                        let entitynamePos = entityPos.clone().setY(entityPos.y + (this.consts.playerHeight + (0x0 <= entity.hatIndex ? this.consts.nameOffsetHat : 0) + this.consts.nameOffset - entity.crouchVal * this.consts.crouchDst));
                         let teamCol = isFriendly ? '#44AAFF' : '#FF4444';
                         let entityScrPosName = entitynamePos.clone();          
                         let playerScaled = Math.max(0.3, 1 - camPos.distanceTo(entityScrPosName) / 600);
@@ -336,7 +345,7 @@ class Skid {
                         //2d
                         if (espMode !== 'Names' && renderer.frustum.containsPoint(entityPos)) {
                             let entityScrPosBase = world2Screen(renderer.camera, entityPos),
-                                entityScrPosHead = world2Screen(renderer.camera, entityPos.setY(entityPos.y + playerHeight - entity.crouchVal * crouchDst)),
+                                entityScrPosHead = world2Screen(renderer.camera, entityPos.setY(entityPos.y + this.consts.playerHeight - entity.crouchVal * this.consts.crouchDst)),
                                 entityScrPxlDiff = pixelDifference(entityScrPosBase, entityScrPosHead, 0.6);
                             rect(entityScrPosHead.x - entityScrPxlDiff[1] / 2, entityScrPosHead.y, 0, 0, entityScrPxlDiff[1], entityScrPxlDiff[0], teamCol, false);
                             const tracers = this.getFeature('Tracers');
@@ -365,7 +374,7 @@ class Skid {
             //Menu
             if (this.menu.show) {
                 switch(this.menu.activeMenu) {
-                    case 0: drawMenuItem('Krunker Skid'); break;
+                    case 0: drawMenuItem('♿ Skid'); break;
                     case 1: drawMenuItem('Self'); break;
                     case 2: drawMenuItem('Weapon'); break;
                     case 3: drawMenuItem('Visual'); break;
@@ -428,7 +437,7 @@ class Skid {
             switch (string) {
                 case 'isYou': return entity[isYou];
                 case 'objInstances': return entity[objInstances];
-                case 'inView': return entity[cnBSeen]; //null == this.world[canSee](this.me, entity.x2, entity.y2 - entity.crouchVal * crouchDst, entity.z2);
+                case 'inView': return entity[cnBSeen]; //null == this.world[canSee](this.me, entity.x2, entity.y2 - entity.crouchVal * this.consts.crouchDst, entity.z2);
                 case 'isFriendly': return (this.me && this.me.team ? this.me.team : this.me.spectating ? 0x1 : 0x0) == entity.team;
                 case 'recoilAnimY': return entity[recoilAnimY];
             }
@@ -439,30 +448,27 @@ class Skid {
         let distance = Infinity, target = null;
         for (const entity of this.world.players.list.filter(x => { return x.active && !x[isYou] && this.get(x,"inView") && !this.get(x,"isFriendly") })) {
             if (defined(entity[objInstances])) {
-                let entityPos = entity[objInstances].position;
+                const entityPos = entity[objInstances].position;
                 if (this.renderer.frustum.containsPoint(entityPos)) {
-                    let dist = entityPos.distanceTo(this.me);
-                    if (dist <= distance) {distance = dist; target = entity;}
+                    const dist = entityPos.distanceTo(this.me);
+                    if (dist <= distance) {
+                        distance = dist; 
+                        target = entity;
+                        return target;
+                    }
                 }
             }
         }
         return target;
     }
     
-    //tx = getXDire(controls.object.position.x, controls.object.position.y, controls.object.position.z, target.x3, y, target.z3);
-    //ty = getDirection(controls.object.position.z, controls.object.position.x, target.z3, target.x3);
     camLookAt(target) {
         const controls = this.world.controls;
-        const headScale = 2;
-        const hitBoxPad = 1;
-        const playerHeight = 11;
-        const cameraHeight = 1.5;
-        const crouchDst = 3;
-        const recoilMlt = 0.3;
+        
         if (target === null) return void(controls.aimTarget = null);
 
-        const offset1 = ((playerHeight - cameraHeight) - (target.crouchVal * crouchDst));/* - (this.me[recoilAnimY] * recoilMlt) * 25;*/
-        const offset2 = playerHeight - headScale / 2 - target.crouchVal * crouchDst;
+        const offset1 = ((this.consts.playerHeight - this.consts.cameraHeight) - (target.crouchVal * this.consts.crouchDst));/* - (this.me[recoilAnimY] * this.consts.recoilMlt) * 25;*/
+        const offset2 = this.consts.playerHeight - this.consts.headScale / 2 - target.crouchVal * this.consts.crouchDst;
 
         let ydir = this.getDirection(controls.object.position.z, controls.object.position.x, target.z2, target.x2);
         let xdir = this.getXDir(controls.object.position.x, controls.object.position.y, controls.object.position.z, target.x2, target.y2 + offset1, target.z2);
@@ -476,38 +482,71 @@ class Skid {
         }
     }
 
-    autoAim(value) {
+    autoAim(value, inputs) {
         const controls = this.world.controls;
+        //if (this.me.weapon.nAuto && this.me.didShoot) {
+        //    inputs[this.enum.shoot] = 0;
+        //} 
         const target = this.getTarget();
         if (target) {
-            if ((value === 'Assist' && this.me.aimVal === 1) || (value === 'Hip Fire' && this.me.aimVal === 0)) return void this.camLookAt(null);
+            switch(value) {
+                case 'Assist':
+                    if (controls[mouseDownR]) this.camLookAt(target);
+                    break;
+                case 'Aim Bot':
+                    this.camLookAt(target);  
+                    break;
+                case 'TriggerBot':
+                    this.camLookAt(target);
+                    inputs[this.enum.scope] = 1;
+                    if (this.me.aimVal === 1) {
+                        inputs[this.enum.shoot] ^= 1;
+                    } else {
+                        inputs[this.enum.scope] = 1;
+                    }
+                    break;
+                case 'Quickscoper':
+                    this.camLookAt(target);
+                    inputs[this.enum.scope] = 1;
+                    if (this.me.aimVal === 0) {
+                        inputs[this.enum.shoot] ^= 1;
+                    } else {
+                        inputs[this.enum.scope] = 1;
+                    }
+                    break;
+                case 'Silent Aim':
+                    let ty = controls.object.rotation.y, tx = controls[pchObjc].rotation.x;
+                    let y = target.y2 + this.consts.playerHeight - (this.consts.headScale) / 2 - target.crouchVal * this.consts.crouchDst;
+                    if (this.me.aimVal === 0) {
+                        inputs[this.enum.shoot] = 1;
+                        inputs[this.enum.scope] = 1;
+                    } else {
+                        inputs[this.enum.scope] = 1;
+                    }      
+                    ty = this.getDirection(controls.object.position.z, controls.object.position.x, target.z2, target.x2);
+                    tx = this.getXDir(controls.object.position.x, controls.object.position.y, controls.object.position.z, target.x2, y, target.z2);
+                    tx -= this.consts.recoilMlt * this.me[recoilAnimY];
+                    inputs[this.enum.xdir] = +(tx % (2 * Math.PI)).toFixed(3);
+                    inputs[this.enum.ydir] = +(ty % (2 * Math.PI)).toFixed(3);
+                    break;
+            }
+         /*   if ((value === 'Assist' && this.me.aimVal === 1) || (value === 'Hip Fire' && this.me.aimVal === 0)) return void this.camLookAt(null);
             this.camLookAt(target);
             if (value === 'TriggerBot') {
-                if (controls[mouseDownR] !== 1) {
-                    controls[mouseDownR] = 1;
-                } else {
-                   controls[mouseDownL] ^=1;
-                }
+                inputs[this.enum.shoot] = 1;
+                inputs[this.enum.scope] = 1;
             } else if (value === 'Quickscoper') {
-                controls[mouseDownR] = 1;
+                inputs[this.enum.scope] = 1;
                 if (this.me.aimVal === 0) {
-                    if (controls[mouseDownL] === 0) {
-                        controls[mouseDownL] = 1;
-                    } else {
-                        controls[mouseDownR] = 0;
-                        controls[mouseDownL] = 0;
-                    }
+                    inputs[this.enum.shoot] = 1;
+                } else {
+                    inputs[this.enum.scope] = 1;
                 }
-            }
+            }*/
         } else {
             this.camLookAt(null);
-            if (value === 1) {
-                controls[mouseDownL] = 0;
-                if (controls[mouseDownR] !== 0) controls[mouseDownR] = 0;
-            } else if (value === 2) {
-                if (controls[mouseDownR] !== 0) controls[mouseDownR] = 0;
-                if (controls[mouseDownL] !== 0) controls[mouseDownL] = 0;
-            }
+            inputs[this.enum.shoot] = controls[mouseDownL];
+            inputs[this.enum.scope] = controls[mouseDownR];
         }
     }
       
@@ -557,25 +596,32 @@ function cripple_window(_window) {
     };
 
     // unique to each user
-    const master_key = 'xttap#4547';
-    if (!window.top[master_key]) {
+    const master_key = 'ttap#4547';
+    if (!_window.top[master_key]) {
         // initialise top state
-        invisible_define(window.top, master_key, shared_state);
+        invisible_define(_window.top, master_key, shared_state);
     } else {
         // restore
-        shared_state = window.top[master_key];
+        shared_state = _window.top[master_key];
     }
 
     // hook toString to hide presence
     const original_toString = _window.Function.prototype.toString;
     let hook_toString = new Proxy(original_toString, {
         apply: function(target, _this, _arguments) {
-            let lookup_fn = shared_state.get('functions_to_hide').get(_this);
-            if (lookup_fn) {
-                return target.apply(lookup_fn, _arguments);
+            try {
+                var ret = Function.prototype.apply.apply(target, [_this, _arguments]);
+            } catch (e) {
+                // modify stack trace to hide proxy
+                e.stack = e.stack.replace(/\n.*Object\.apply \(<.*/, '');
+                throw e;
             }
 
-            let ret = target.apply(_this, _arguments);
+            let lookup_fn = shared_state.get('functions_to_hide').get(_this);
+            if (lookup_fn) {
+                return Function.prototype.apply.apply(target, [lookup_fn, _arguments]);
+            }
+
             for (var i = 0; i < shared_state.get('strings_to_hide').length; i++) {
                 ret = ret.replace(shared_state.get('strings_to_hide')[i].from, shared_state.get('strings_to_hide')[i].to);
             }
@@ -597,10 +643,10 @@ function cripple_window(_window) {
     let hook_getOwnPropertyDescriptors = new Proxy(original_getOwnPropertyDescriptors, {
         apply: function(target, _this, _arguments) {
             try {
-                var descriptors = target.apply(_this, _arguments);
+                var descriptors = Function.prototype.apply.apply(target, [_this, _arguments]);
             } catch (e) {
                 // modify stack trace to hide proxy
-                e.stack = e.stack.replace(/.*Object.*\n/g, '');
+                e.stack = e.stack.replace(/\n.*Object\.apply \(<.*/, '');
                 throw e;
             }
             for (var i = 0; i < shared_state.get('hidden_globals').length; i++) {
@@ -629,8 +675,15 @@ function cripple_window(_window) {
     const original_clearRect = _window.CanvasRenderingContext2D.prototype.clearRect;
     let hook_clearRect = new Proxy(original_clearRect, {
         apply: function(target, _this, _arguments) {
-            target.apply(_this, _arguments);
+            try {
+                var ret = Function.prototype.apply.apply(target, [_this, _arguments]);
+            } catch (e) {
+                // modify stack trace to hide proxy
+                e.stack = e.stack.replace(/\n.*Object\.apply \(<.*/, '');
+                throw e;
+            }
             drawVisuals(_this);
+            return ret;
         }
     });
     _window.CanvasRenderingContext2D.prototype.clearRect = hook_clearRect;
@@ -640,6 +693,13 @@ function cripple_window(_window) {
     const original_open = _window.open;
     let hook_open = new Proxy(original_open, {
         apply: function(target, _this, _arguments) {
+            try {
+                let ret = Function.prototype.apply.apply(target, [_this, _arguments]);
+            } catch (e) {
+                // modify stack trace to hide proxy
+                e.stack = e.stack.replace(/\n.*Object\.apply \(<.*/, '');
+                throw e;
+            }
             return null;
         }
     });
@@ -665,21 +725,18 @@ function cripple_window(_window) {
     }
     /******************************************************/ 
     const handler = {
-      construct(target, args) {
-        try {
-            var original_fn = new target(...args);
-        } catch (e) {
-            // modify stack trace to hide proxy
-            e.stack = e.stack.replace(/.*Object.*\n/g, '');
+        apply: function(target, _this, _arguments) {
+            try {
+                var original_fn = Function.prototype.apply.apply(target, [_this, _arguments]);
+            } catch (e) {
+                // modify stack trace to hide proxy
+                e.stack = e.stack.replace(/\n.*Object\.apply \(<.*/, '');
             throw e;
-        }
+            }
 
-        if (args.length == 2 && args[1].length > parseInt("1337 ttap#4547")) {
-            let script = args[1];
-            window.gamescript = script;
-
-            // note: this window is not the main window
-
+            if (_arguments.length == 2 && _arguments[1].length > parseInt("1337 ttap#4547")) {
+                let script = _arguments[1];
+                
             // Player
             window['canSee'] = script.match(/,this\['(\w+)'\]=function\(\w+,\w+,\w+,\w+,\w+\){if\(!\w+\)return!\w+;/)[1];
             window['isYou'] = script.match(/,this\['\w+'\]=!\w+,this\['\w+'\]=!\w+,this\['(\w+)'\]=\w+,this\['\w+'\]\['length'\]=\w+,this\[/)[1];
@@ -688,7 +745,7 @@ function cripple_window(_window) {
             window['recoilAnimY'] = script.match(/\w*1,this\['\w+'\]=\w*0,this\['\w+'\]=\w*0,this\['\w+'\]=\w*1,this\['\w+'\]=\w*1,this\['\w+'\]=\w*0,this\['\w+'\]=\w*0,this\['(\w+)'\]=\w*0,this\['\w+'\]=\w*0,this\['\w+'\]=\w*0,this\['\w+'\]=\w*0,/)[1];
             
             //Controls
-            window['pchObjc'] = script.match(/\(\w+,\w+,\w+\),this\['(\w+)'\]=new \w+\['\w+'\]\(\)/)[1];     
+            window['pchObjc'] = script.match(/\(\w+,\w+,\w+\),this\['(\w+)'\]=new \w+\['\w+'\]\(\)/)[1]; 
             window['mouseDownL'] = script.match(/this\['\w+'\]=function\(\){this\['(\w+)'\]=\w*0,this\['(\w+)'\]=\w*0,this\['\w+'\]={}/)[1];
             window['mouseDownR'] = script.match(/this\['\w+'\]=function\(\){this\['(\w+)'\]=\w*0,this\['(\w+)'\]=\w*0,this\['\w+'\]={}/)[2];
 
@@ -722,16 +779,16 @@ function cripple_window(_window) {
 
             // no zoom
             script = script.replace(/,'zoom':.+?(?=,)/g, ",'zoom':1");
+                /***********************************************************************************************************/
 
-            /***********************************************************************************************************/
+                // bypass modification check of returned function
+                const original_script = _arguments[1];
+                _arguments[1] = script;
+                let mod_fn = Function.prototype.apply.apply(target, [_this, _arguments]);
+                _arguments[1] = original_script;
+                conceal_function(original_fn, mod_fn);
 
-            // bypass modification check of returned function
-            const original_script = args[1];
-            args[1] = script;
-            let mod_fn = new target(...args);
-            args[1] = original_script;
-            conceal_function(original_fn, mod_fn);
-            return mod_fn;
+                return mod_fn;
         }
         return original_fn;
       }
