@@ -454,7 +454,7 @@ class Skid {
 
     camLookAt(target) {
         const controls = this.world.controls;
-        if (!defined(controls) || target === null) return void(controls.target = null);
+        if (!defined(controls) || target === null || (target.x2 + target.y2 + target.z2) == 0) return void(controls.target = null);
         let offset1 = ((this.consts.playerHeight - this.consts.cameraHeight) - (target.crouchVal * this.consts.crouchDst));
         let offset2 = this.consts.playerHeight - this.consts.headScale / 2 - target.crouchVal * this.consts.crouchDst;
         let xdir = this.getXDir(controls.object.position.x, controls.object.position.y, controls.object.position.z, target.x2, target.y2 + offset2, target.z2);
