@@ -17,7 +17,6 @@ class Skid {
             show:true,
         };
         this.settings = {
-            target:null,
             delta: 1,
         };
         this.enum = { 
@@ -44,33 +43,20 @@ class Skid {
         .set('Self', [this.newFeature('AutoBhop', ['Off', 'Auto Jump', 'Key Jump', 'Auto Slide', 'Key Slide']), /*this.newFeature('SkidSettings', ['Off', 'On'])*/ ])
         .set('Weapon', [this.newFeature('AutoAim', ['Off', 'TriggerBot', 'Quickscoper', 'Assist', 'Aim Bot', 'Silent Aim']), this.newFeature('AutoReload', ['Off', 'On'])/*, this.newFeature('Aim Through Walls', ['Off', 'On']), this.newFeature('UseDeltaForce', ['Off', 'On'])*/])
         .set('Visual', [this.newFeature('EspMode', ['Off', '2d', 'Names', 'All']), this.newFeature('Tracers', ['Off', 'On'])])
-        .set('Settings', [this.newFeature('Reset', [], this.resetSettings) /*this.newFeature('Save game.js', [], _=>{navigator.msSaveOrOpenBlob(new main.Blob([window.gamescript], {type: "text/plain;charset=utf-8"}), `game.js`);})*/])
+        .set('Settings', [this.newFeature('Reset', [], this.resetSettings), /*this.newFeature('Save game.js', [], _=>{navigator.msSaveOrOpenBlob(new main.Blob([window.gamescript], {type: "text/plain;charset=utf-8"}), `game.js`);})*/])
+    
     }
     onTick(me, world, inputs) {
         if (!defined(world.controls.keys)) return;
         let controls = world.controls;
         this.world = world;
         this.me = me;
-        controls.recoil = this.consts.recoilMlt * me[recoilAnimY];
-        if (!defined(controls.pitchObject)) {
-            controls.aimTarget = null;
-            controls.inputs = inputs;
-            controls.pitchObject = controls[pchObjc];
-            controls.updated = controls.update;
-            controls.update = function() {
-                if (!this.target && this.aimTarget) {
-                    this.object.rotation.y = this.aimTarget.yD;
-                    this.pitchObject.rotation.x = this.aimTarget.xD;
-                    const c = Math.PI / 2;
-                    this.pitchObject.rotation.x = Math.max(-c, Math.min(c, this.pitchObject.rotation.x));
-                    this.yDr =  (this.pitchObject.rotation.x % (2 * Math.PI));
-                    this.xDr = (this.object.rotation.y % (2 * Math.PI));
-                    this.xDr -= this.recoil;
-                    this.inputs[3] = +(this.xDr);
-                    this.inputs[2] = +(this.yDr);
-                }
-                return this.updated(...arguments);
-            } 
+        if (!defined(this.init)) {
+            this.init = true;
+            console.dir(me);
+            console.dir(world);
+            console.dir(this.consts);
+            this.consts.serverConfig[23].def = true;
         }
 
         for (let i = 0, sz = this.menu.features.length; i < sz; i++) {
@@ -95,12 +81,6 @@ class Skid {
                             if (feature.value > 2) inputs[this.enum.crouch] = (me.yVel < -0.04 && me.canSlide) * 1;
                         }
                     break;
-                    //case 'SkidSettings':
-                    //if (feature.value) new Map([ ["fov", 85], ["fpsFOV", 85], ["weaponBob", 3], ["weaponLean", 6], ["weaponOffX", 2], ["weaponOffY", 2], ["weaponOffZ", 2] ]).forEach(function(value, key, map) { window.setSetting(key, value) });
-                    //break;
-                    //case 'UseDeltaForce':
-                    //this.settings.delta = feature.value ? 5 : 1;
-                    //break;
             }
         }
         me.lastInput = inputs;
@@ -121,6 +101,16 @@ class Skid {
         let camPos = renderer.camera.getWorldPosition();
         let controls = world.controls;
         let entities = world.players.list.filter(x => { return x.active && !x[isYou] });
+
+        // camLookAt
+        if (defined(controls.target) && controls.target !== null) {
+            const half = Math.PI / 2;
+            controls.object.rotation.y = controls.target.yD;
+            controls[pchObjc].rotation.x = controls.target.xD;
+            controls[pchObjc].rotation.x = Math.max(-half, Math.min(half, controls[pchObjc].rotation.x));    
+            controls.yDr = controls[pchObjc].rotation.x % Math.PI;
+            controls.xDr = controls.object.rotation.y % Math.PI;
+        }  else controls.target = null;
         
         //functions
         let world2Screen = (camera, position) => {
@@ -437,7 +427,7 @@ class Skid {
             switch (string) {
                 case 'isYou': return entity[isYou];
                 case 'objInstances': return entity[objInstances];
-                case 'inView': return entity[cnBSeen]; //null == this.world[canSee](this.me, entity.x2, entity.y2 - entity.crouchVal * this.consts.crouchDst, entity.z2);
+                case 'inView': return null == this.world[canSee](this.me, entity.x2, entity.y2 - entity.crouchVal * this.consts.crouchDst, entity.z2) || entity[cnBSeen];
                 case 'isFriendly': return (this.me && this.me.team ? this.me.team : this.me.spectating ? 0x1 : 0x0) == entity.team;
                 case 'recoilAnimY': return entity[recoilAnimY];
             }
@@ -445,36 +435,33 @@ class Skid {
         return null;
     }
     getTarget() {
-        let distance = Infinity, target = null;
-        for (const entity of this.world.players.list.filter(x => { return x.active && !x[isYou] && this.get(x,"inView") && !this.get(x,"isFriendly") })) {
+        if (!defined (this.me.distance)) this.me.distance = Infinity;
+        for (const entity of this.world.players.list.filter(x => { return x.active && !x[isYou] && this.get(x,"inView") && !this.get(x,"isFriendly") && x.health > 0})) {
             if (defined(entity[objInstances])) {
                 const entityPos = entity[objInstances].position;
                 if (this.renderer.frustum.containsPoint(entityPos)) {
                     const dist = entityPos.distanceTo(this.me);
-                    if (dist <= distance) {
-                        distance = dist; 
-                        target = entity;
-                        return target;
+                    if (dist <= this.me.distance) {
+                        this.me.distance = dist; 
+                        return entity;
                     }
                 }
             }
         }
-        return target;
+        this.me.distance = Infinity;
+        return null;
     }
-    
+
     camLookAt(target) {
         const controls = this.world.controls;
-        
-        if (target === null) return void(controls.aimTarget = null);
-
-        const offset1 = ((this.consts.playerHeight - this.consts.cameraHeight) - (target.crouchVal * this.consts.crouchDst));/* - (this.me[recoilAnimY] * this.consts.recoilMlt) * 25;*/
-        const offset2 = this.consts.playerHeight - this.consts.headScale / 2 - target.crouchVal * this.consts.crouchDst;
-
+        if (!defined(controls) || target === null) return void(controls.target = null);
+        let offset1 = ((this.consts.playerHeight - this.consts.cameraHeight) - (target.crouchVal * this.consts.crouchDst));
+        let offset2 = this.consts.playerHeight - this.consts.headScale / 2 - target.crouchVal * this.consts.crouchDst;
+        let xdir = this.getXDir(controls.object.position.x, controls.object.position.y, controls.object.position.z, target.x2, target.y2 + offset2, target.z2);
         let ydir = this.getDirection(controls.object.position.z, controls.object.position.x, target.z2, target.x2);
-        let xdir = this.getXDir(controls.object.position.x, controls.object.position.y, controls.object.position.z, target.x2, target.y2 + offset1, target.z2);
-        let camChaseDst = this.consts.camChaseDst;
-        controls.aimTarget = {
-            xD: xdir,
+        const camChaseDst = this.consts.camChaseDst;
+        controls.target = {
+            xD:xdir,
             yD: ydir,
             x: target.x2 + camChaseDst * Math.sin(ydir) * Math.cos(xdir),
             y: target.y2 - camChaseDst * Math.sin(xdir),
@@ -484,67 +471,62 @@ class Skid {
 
     autoAim(value, inputs) {
         const controls = this.world.controls;
-        //if (this.me.weapon.nAuto && this.me.didShoot) {
-        //    inputs[this.enum.shoot] = 0;
-        //} 
+        const half = Math.PI / 2;
+        const double = (2 * Math.PI);
+        let ty = controls.object.rotation.y;
+        let tx = controls[pchObjc].rotation.x;
         const target = this.getTarget();
         if (target) {
-            switch(value) {
-                case 'Assist':
-                    if (controls[mouseDownR]) this.camLookAt(target);
-                    break;
-                case 'Aim Bot':
-                    this.camLookAt(target);  
-                    break;
-                case 'TriggerBot':
-                    this.camLookAt(target);
-                    inputs[this.enum.scope] = 1;
-                    if (this.me.aimVal === 1) {
-                        inputs[this.enum.shoot] ^= 1;
-                    } else {
-                        inputs[this.enum.scope] = 1;
-                    }
-                    break;
-                case 'Quickscoper':
-                    this.camLookAt(target);
-                    inputs[this.enum.scope] = 1;
-                    if (this.me.aimVal === 0) {
-                        inputs[this.enum.shoot] ^= 1;
-                    } else {
-                        inputs[this.enum.scope] = 1;
-                    }
-                    break;
-                case 'Silent Aim':
-                    let ty = controls.object.rotation.y, tx = controls[pchObjc].rotation.x;
-                    let y = target.y2 + this.consts.playerHeight - (this.consts.headScale) / 2 - target.crouchVal * this.consts.crouchDst;
-                    if (this.me.aimVal === 0) {
-                        inputs[this.enum.shoot] = 1;
-                        inputs[this.enum.scope] = 1;
-                    } else {
-                        inputs[this.enum.scope] = 1;
-                    }      
-                    ty = this.getDirection(controls.object.position.z, controls.object.position.x, target.z2, target.x2);
-                    tx = this.getXDir(controls.object.position.x, controls.object.position.y, controls.object.position.z, target.x2, y, target.z2);
-                    tx -= this.consts.recoilMlt * this.me[recoilAnimY];
-                    inputs[this.enum.xdir] = +(tx % (2 * Math.PI)).toFixed(3);
-                    inputs[this.enum.ydir] = +(ty % (2 * Math.PI)).toFixed(3);
-                    break;
-            }
-         /*   if ((value === 'Assist' && this.me.aimVal === 1) || (value === 'Hip Fire' && this.me.aimVal === 0)) return void this.camLookAt(null);
-            this.camLookAt(target);
-            if (value === 'TriggerBot') {
-                inputs[this.enum.shoot] = 1;
-                inputs[this.enum.scope] = 1;
-            } else if (value === 'Quickscoper') {
-                inputs[this.enum.scope] = 1;
-                if (this.me.aimVal === 0) {
-                    inputs[this.enum.shoot] = 1;
-                } else {
+            ty = this.getDirection(controls.object.position.z, controls.object.position.x, target.z2, target.x2);
+            tx = this.getXDir(controls.object.position.x, controls.object.position.y, controls.object.position.z, target.x2, target.y2 + this.consts.playerHeight - (this.consts.headScale) / 2 - target.crouchVal * this.consts.crouchDst, target.z2);
+            tx -= this.consts.recoilMlt * this.me[recoilAnimY];
+
+            if (value == "Assist" && controls[mouseDownR] == 1) {
+                this.camLookAt(target);
+                if (this.me.aimVal === 1) {
                     inputs[this.enum.scope] = 1;
                 }
-            }*/
-        } else {
-            this.camLookAt(null);
+            }
+            else if (value == "Aim Bot") {
+                if (this.me.aimVal < 1 && this.me.aimVal > 0) this.camLookAt(target);
+                if (this.me.aimVal === 0) {
+                    inputs[this.enum.xdir] = +(tx % double).toFixed(3);
+                    inputs[this.enum.ydir] = +(ty % double).toFixed(3);
+                    inputs[this.enum.scope] = 1;
+                }
+            }
+            else if (value == 'TriggerBot') {
+                if (this.me.aimVal === 1) {
+                    controls[mouseDownR] == 1;
+                }
+                if (this.me.aimVal === 0) {
+                    inputs[this.enum.shoot] = 1;
+                    this.camLookAt(target);
+                    inputs[this.enum.xdir] = +(tx % double).toFixed(3);
+                    inputs[this.enum.ydir] = +(ty % double).toFixed(3);
+                }
+            }
+            else if (value == 'Quickscoper' || value =='Silent Aim') {
+                if (this.me.aimVal === 0) {
+                    if (value == 'Quickscoper') this.camLookAt(target);
+                    inputs[this.enum.shoot] = 1;
+                    inputs[this.enum.scope] = 1;
+                    inputs[this.enum.xdir] = +(tx % double).toFixed(3);
+                    inputs[this.enum.ydir] = +(ty % double).toFixed(3);
+                } else {
+                    inputs[this.enum.scope] = 1; 
+                    if (controls.target) this.camLookAt(null);
+                }
+            }
+            if(this.me.didShoot) {
+                if (this.me.weapon.nAuto)inputs[this.enum.shoot] = 0;
+                if (controls.target) this.camLookAt(null);
+                inputs[this.enum.xdir] = +(tx % double).toFixed(3);
+                inputs[this.enum.ydir] = +(ty % double).toFixed(3);
+            }          
+        }
+        else {
+            if (controls.target) this.camLookAt(null);
             inputs[this.enum.shoot] = controls[mouseDownL];
             inputs[this.enum.scope] = controls[mouseDownR];
         }
@@ -762,6 +744,8 @@ function cripple_window(_window) {
             conceal_string(gm_procInputs[0], my_procInputs);
 
             /***********************************************************************************************************/
+           // script = script.replace(/{if\(this\['target']\){([^}]+)}},/,  `{ if (this.target) {this.yDr = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.target.xD)) % Math.PI2;this.xDr = this.target.yD % Math.PI2;}},`);
+
             //remove in game nametags
             script = script.replace(/(if\('none'==menuHolder\['style']\['display']&&'none'==endUI\['style']\['display'])\)/, '$1 && !1)')
             
@@ -776,6 +760,8 @@ function cripple_window(_window) {
 
             // color blind mode
             script = script.replace(/#9eeb56/g, '#44AAFF');
+
+            script= script.replace(/(Howler\['orientation'](.+?)\)\),)/, ``)
 
             // no zoom
             script = script.replace(/,'zoom':.+?(?=,)/g, ",'zoom':1");
