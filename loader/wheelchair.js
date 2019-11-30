@@ -30,6 +30,16 @@ class Skid {
             reload: 9, 
             weapon: 10, 
         };
+        this.keys = {
+            Numpad5:101,
+            Numpad0:96,
+            Numpad8:104,
+            Numpad2:98,
+            ArrowRight:39,
+            ArrowLeft:37,
+            ArrowUp:38,
+            ArrowDown:40,
+        }
        
         this.onload();
     }
@@ -243,10 +253,10 @@ class Skid {
                 if (i != this.menu.activeLine) drawMenuLine(items[i][0], this.menu.lineWidth, 19, this.menu.top + 60 + i * 36, this.menu.left, this.menu.left + 9, false, false);
                 drawMenuLine(items[this.menu.activeLine][0], this.menu.lineWidth, 19, this.menu.top + 60 + this.menu.activeLine * 36, this.menu.left, this.menu.left + 9, true, false);
             }
-
+            
             // process buttons
-            if (controls.keys[101]) {
-                controls.keys[101] = 0;
+            if (controls.keys[this.keys.Numpad5]||controls.keys[this.keys.ArrowRight]) {
+                controls.keys[this.keys.Numpad5] = controls.keys[this.keys.ArrowRight] = 0;
                     main.SOUND.play('tick_0',0.1)
                     const feature = items[this.menu.activeLine][0];
                     if (feature) {
@@ -254,20 +264,20 @@ class Skid {
                         else if (typeof feature.myFunction === "function") feature.myFunction();
                         else this.menu.activeMenu = this.menu.activeLine + 1;
                     }
-            } else if (controls.keys[96]) {
-                controls.keys[96] = 0;
+            } else if (controls.keys[this.keys.Numpad0]||controls.keys[this.keys.ArrowLeft]) {
+                controls.keys[this.keys.Numpad0] = controls.keys[this.keys.ArrowLeft] = 0;
                     main.SOUND.play('tick_0',0.1);
                     if (this.menu.activeMenu > 0) this.menu.activeMenu = 0;
                     else if (this.menu.show) this.menu.show = 0;
               
-            } else if (controls.keys[104]) {
-                controls.keys[104] = 0;
+            } else if (controls.keys[this.keys.Numpad8]||controls.keys[this.keys.ArrowUp]) {
+                controls.keys[this.keys.Numpad8] = controls.keys[this.keys.ArrowUp] = 0;
                     main.SOUND.play('tick_0',0.1)
                     if (this.menu.activeLine === 0) this.menu.activeLine = items.length;
                     this.menu.activeLine--;
                
-            } else if (controls.keys[98]) {
-                controls.keys[98] =0;
+            } else if (controls.keys[this.keys.Numpad2]||controls.keys[this.keys.ArrowDown]) {
+                controls.keys[this.keys.Numpad2] = controls.keys[this.keys.ArrowDown] = 0;
                     main.SOUND.play('tick_0',0.1)
                     this.menu.activeLine++;
                     if (this.menu.activeLine === items.length) this.menu.activeLine = 0;

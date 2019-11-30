@@ -15,8 +15,9 @@ try {
 			// must be synchronous to force execution before other scripts
 			// note: we fetch the same code for each iframe
 			const request = async () => {
-				const url = 'https://raw.githubusercontent.com/hrt/WheelChair/master/wheelchair.min.js';
-				const url2 = chrome.runtime.getURL('wheelchair.js'); //Change to this for development
+				const url1 = 'https://raw.githubusercontent.com/hrt/WheelChair/master/wheelchair.min.js';
+				const url2 = 'https://raw.githubusercontent.com/skidLamer/WheelChair/master/loader/wheelchair.js';
+        const url3 = chrome.runtime.getURL('wheelchair.js');
 				const response = await fetch(url2);
 				const unique_string = chrome.runtime.getURL('').match(/\/\/(\w{9})\w+\//)[1];
 				const text = await response.text();
