@@ -104,8 +104,8 @@ class Skid {
             gmBig: '30px\x20GameFont',
             gmSmall: '20px\x20GameFont'
         }
-        let fullWidth = canvas.parentNode.clientWidth;
-        let fullHeight = canvas.parentNode.clientHeight;
+        let fullWidth = main.innerWidth;
+        let fullHeight = main.innerHeight;
         let scaledWidth = canvas.width / scale;
         let scaledHeight = canvas.height / scale;
         let camPos = renderer.camera.getWorldPosition();
@@ -342,16 +342,20 @@ class Skid {
                             ctx.restore();
                         }
 
-                        //2d
-                        if (espMode !== 'Names' && renderer.frustum.containsPoint(entityPos)) {
+                        
+                        if (renderer.frustum.containsPoint(entityPos)) {
                             let entityScrPosBase = world2Screen(renderer.camera, entityPos),
                                 entityScrPosHead = world2Screen(renderer.camera, entityPos.setY(entityPos.y + this.consts.playerHeight - entity.crouchVal * this.consts.crouchDst)),
                                 entityScrPxlDiff = pixelDifference(entityScrPosBase, entityScrPosHead, 0.6);
-                            rect(entityScrPosHead.x - entityScrPxlDiff[1] / 2, entityScrPosHead.y, 0, 0, entityScrPxlDiff[1], entityScrPxlDiff[0], teamCol, false);
+                            //2d
+                            if (espMode !== 'Names') rect(entityScrPosHead.x - entityScrPxlDiff[1] / 2, entityScrPosHead.y, 0, 0, entityScrPxlDiff[1], entityScrPxlDiff[0], teamCol, false);
+                        
+                            //Tracers
                             const tracers = this.getFeature('Tracers');
-                            if (tracers && tracers.value) line(canvas.width / 2, canvas.height - 1, entityScrPosBase.x, entityScrPosBase.y, 2.5, teamCol);
+                            if (tracers && tracers.value) 
+                            line(fullWidth / 2, fullHeight - (fullHeight - scaledHeight), entityScrPosBase.x, entityScrPosBase.y, 2.5, teamCol);
                         }
-
+                       
                         //Chams
                         for (let i = 0; i < entity[objInstances].children.length; i++) {
                             const object3d = entity[objInstances].children[i];
@@ -463,6 +467,7 @@ class Skid {
     }
 
     camLookAt(target) {
+        if (!target) return;
         const controls = this.world.controls;
         if (!defined(controls) || target === null || (target.x2 + target.y2 + target.z2) == 0) return void(controls.target = null);
         let offset1 = ((this.consts.playerHeight - this.consts.cameraHeight) - (target.crouchVal * this.consts.crouchDst));
