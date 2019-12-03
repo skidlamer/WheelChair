@@ -388,8 +388,8 @@ class Skid {
                     default: break;
                 }
             }
-            else if (controls.keys[96] && !this.menu.show) {
-                controls.keys[96] = 0;
+            else if ((controls.keys[this.keys.Numpad0]||controls.keys[this.keys.Numpad0b]||controls.keys[this.keys.ArrowLeft]) && !this.menu.show) {
+                controls.keys[this.keys.Numpad0] = controls.keys[this.keys.Numpad0b] = controls.keys[this.keys.ArrowLeft] = 0;
                 main.SOUND.play('tick_0',0.1)
                 this.menu.show = true;       
             }
@@ -469,7 +469,6 @@ class Skid {
     }
 
     camLookAt(target) {
-        if (!target) return;
         const controls = this.world.controls;
         if (!defined(controls) || target === null || (target.x2 + target.y2 + target.z2) == 0) return void(controls.target = null);
         let offset1 = ((this.consts.playerHeight - this.consts.cameraHeight) - (target.crouchVal * this.consts.crouchDst));
@@ -537,7 +536,7 @@ class Skid {
             }
             if(this.me.didShoot) {
                 if (this.me.weapon.nAuto)inputs[this.enum.shoot] = 0;
-                if (controls.target) this.camLookAt(null);
+                //if (controls.target) this.camLookAt(null);
                 inputs[this.enum.xdir] = +(tx % double).toFixed(3);
                 inputs[this.enum.ydir] = +(ty % double).toFixed(3);
             }          
