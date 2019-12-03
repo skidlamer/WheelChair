@@ -443,7 +443,7 @@ class Skid {
             switch (string) {
                 case 'isYou': return entity[isYou];
                 case 'objInstances': return entity[objInstances];
-                case 'inView': return null == this.world[canSee](this.me, entity.x2, entity.y2 - entity.crouchVal * this.consts.crouchDst, entity.z2) || entity[cnBSeen];
+                case 'inView': return null == this.world[canSee](this.me, entity.x, entity.y - entity.crouchVal * this.consts.crouchDst, entity.z) || entity[cnBSeen];
                 case 'isFriendly': return (this.me && this.me.team ? this.me.team : this.me.spectating ? 0x1 : 0x0) == entity.team;
                 case 'recoilAnimY': return entity[recoilAnimY];
             }
@@ -470,18 +470,18 @@ class Skid {
 
     camLookAt(target) {
         const controls = this.world.controls;
-        if (!defined(controls) || target === null || (target.x2 + target.y2 + target.z2) == 0) return void(controls.target = null);
+        if (!defined(controls) || target === null || (target.x + target.y + target.z2) == 0) return void(controls.target = null);
         let offset1 = ((this.consts.playerHeight - this.consts.cameraHeight) - (target.crouchVal * this.consts.crouchDst));
         let offset2 = this.consts.playerHeight - this.consts.headScale / 2 - target.crouchVal * this.consts.crouchDst;
-        let xdir = this.getXDir(controls.object.position.x, controls.object.position.y, controls.object.position.z, target.x2, target.y2 + offset2, target.z2);
-        let ydir = this.getDirection(controls.object.position.z, controls.object.position.x, target.z2, target.x2);
+        let xdir = this.getXDir(controls.object.position.x, controls.object.position.y, controls.object.position.z, target.x, target.y + offset2, target.z);
+        let ydir = this.getDirection(controls.object.position.z, controls.object.position.x, target.z, target.x);
         const camChaseDst = this.consts.camChaseDst;
         controls.target = {
             xD:xdir,
             yD: ydir,
-            x: target.x2 + camChaseDst * Math.sin(ydir) * Math.cos(xdir),
-            y: target.y2 - camChaseDst * Math.sin(xdir),
-            z: target.z2 + camChaseDst * Math.cos(ydir) * Math.cos(xdir)
+            x: target.x + camChaseDst * Math.sin(ydir) * Math.cos(xdir),
+            y: target.y - camChaseDst * Math.sin(xdir),
+            z: target.z + camChaseDst * Math.cos(ydir) * Math.cos(xdir)
         }
     }
 
@@ -493,8 +493,8 @@ class Skid {
         let tx = controls[pchObjc].rotation.x;
         const target = this.getTarget();
         if (target) {
-            ty = this.getDirection(controls.object.position.z, controls.object.position.x, target.z2, target.x2);
-            tx = this.getXDir(controls.object.position.x, controls.object.position.y, controls.object.position.z, target.x2, target.y2 + this.consts.playerHeight - (this.consts.headScale) / 2 - target.crouchVal * this.consts.crouchDst, target.z2);
+            ty = this.getDirection(controls.object.position.z, controls.object.position.x, target.z, target.x);
+            tx = this.getXDir(controls.object.position.x, controls.object.position.y, controls.object.position.z, target.x, target.y + this.consts.playerHeight - (this.consts.headScale) / 2 - target.crouchVal * this.consts.crouchDst, target.z);
             tx -= this.consts.recoilMlt * this.me[recoilAnimY];
 
             if (value == "Assist" && controls[mouseDownR] == 1) {

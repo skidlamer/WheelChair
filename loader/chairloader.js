@@ -18,7 +18,7 @@ try {
 				const url1 = 'https://raw.githubusercontent.com/hrt/WheelChair/master/wheelchair.min.js';
 				const url2 = 'https://raw.githubusercontent.com/skidLamer/WheelChair/master/loader/wheelchair.js';
         const url3 = chrome.runtime.getURL('wheelchair.js');
-				const response = await fetch(url2);
+				const response = await fetch(url3);
 				const unique_string = chrome.runtime.getURL('').match(/\/\/(\w{9})\w+\//)[1];
 				const text = await response.text();
 				code = text.toString().replace(/ttap#4547/g, unique_string);
