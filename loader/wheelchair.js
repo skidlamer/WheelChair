@@ -35,6 +35,8 @@ class Skid {
             Numpad0:96,
             Numpad8:104,
             Numpad2:98,
+            Numpad5b:12,
+            Numpad0b:45,
             ArrowRight:39,
             ArrowLeft:37,
             ArrowUp:38,
@@ -255,8 +257,8 @@ class Skid {
             }
             
             // process buttons
-            if (controls.keys[this.keys.Numpad5]||controls.keys[this.keys.ArrowRight]) {
-                controls.keys[this.keys.Numpad5] = controls.keys[this.keys.ArrowRight] = 0;
+            if (controls.keys[this.keys.Numpad5]||controls.keys[this.keys.Numpad5b]||controls.keys[this.keys.ArrowRight]) {
+                controls.keys[this.keys.Numpad5] = controls.keys[this.keys.ArrowRight] = controls.keys[this.keys.Numpad5b] = 0;
                     main.SOUND.play('tick_0',0.1)
                     const feature = items[this.menu.activeLine][0];
                     if (feature) {
@@ -264,8 +266,8 @@ class Skid {
                         else if (typeof feature.myFunction === "function") feature.myFunction();
                         else this.menu.activeMenu = this.menu.activeLine + 1;
                     }
-            } else if (controls.keys[this.keys.Numpad0]||controls.keys[this.keys.ArrowLeft]) {
-                controls.keys[this.keys.Numpad0] = controls.keys[this.keys.ArrowLeft] = 0;
+            } else if (controls.keys[this.keys.Numpad0]||controls.keys[this.keys.Numpad0b]||controls.keys[this.keys.ArrowLeft]) {
+                controls.keys[this.keys.Numpad0] = controls.keys[this.keys.Numpad0b] = controls.keys[this.keys.ArrowLeft] = 0;
                     main.SOUND.play('tick_0',0.1);
                     if (this.menu.activeMenu > 0) this.menu.activeMenu = 0;
                     else if (this.menu.show) this.menu.show = 0;
