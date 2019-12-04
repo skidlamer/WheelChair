@@ -3,7 +3,7 @@ let interval_ui = setInterval(() => {
 	if (document.getElementById("inGameUI") !== null) {
 		clearInterval(interval_ui);
 		const url = confirm('[ OK ] - Load Skid?\n[ Cancel ] - Load WheelChair') 
-		? 'https://raw.githubusercontent.com/skidlamer/WheelChair/master/loader/wheelchair.js' 
+		? 'https://raw.githubusercontent.com/skidlamer/WheelChair/master/skid.min.js' 
 		: 'https://raw.githubusercontent.com/hrt/WheelChair/master/wheelchair.min.js';
 		fetch(url) 	
 		.then(response => response.text())  
