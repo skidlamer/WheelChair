@@ -1,6 +1,6 @@
 let debug = chrome.runtime.getURL('wheelchair.js');
 let interval_ui = setInterval(() => {
-	if (document.getElementById("inGameUI") !== null) {
+	if (document.getElementById("menuItemContainer") !== null) {
 		clearInterval(interval_ui);
 		const url = confirm('[ OK ] - Load Skid?\n[ Cancel ] - Load WheelChair') 
 		? 'https://raw.githubusercontent.com/skidlamer/WheelChair/master/skid.min.js' 
