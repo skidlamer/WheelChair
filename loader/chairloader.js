@@ -1,11 +1,12 @@
-let debug = chrome.runtime.getURL('wheelchair.js');
+
 let interval_ui = setInterval(() => {
 	if (document.getElementById("menuItemContainer") !== null) {
 		clearInterval(interval_ui);
+		const dev =  chrome.runtime.getURL('wheelchair.js');
 		const url = confirm('[ OK ] - Load Skid?\n[ Cancel ] - Load WheelChair') 
 		? 'https://raw.githubusercontent.com/skidlamer/WheelChair/master/skid.min.js' 
 		: 'https://raw.githubusercontent.com/hrt/WheelChair/master/wheelchair.min.js';
-		fetch(url) 	
+		fetch(  url ) 	
 		.then(response => response.text())  
 		.then(text => {
 			let frame = document.createElement('iframe');
